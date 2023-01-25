@@ -31,13 +31,13 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'rest_framework',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-	'rest_framework',
 	'djoser',
     'rest_framework.authtoken',
     # admin authentication: 7667b914ef8237aef20d4b2cefea653da61b08d6
@@ -129,3 +129,19 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+REST_FRAMEWORK = {
+	'DEFAULT_RENDERER_CLASSES': [
+		'rest_framework.renderers.JSONRenderer',
+		'rest_framework.renderers.BrowsableAPIRenderer',
+	],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+	    'rest_framework.authentication.TokenAuthentication',
+	    'rest_framework.authentication.SessionAuthentication',
+	    # second line adds browsable API view of Djoser
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '10/minute',
+        'user': '5/second',
+    }
+}
