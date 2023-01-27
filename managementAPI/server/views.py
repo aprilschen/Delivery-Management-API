@@ -4,13 +4,16 @@ from rest_framework.decorators import api_view, permission_classes, throttle_cla
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
-
+from .serializers import MenuItemSerializer
+from .models import MenuItem
 # Create your views here.
 @api_view(['GET', 'POST'])
 @throttle_classes([AnonRateThrottle, UserRateThrottle])
 def menu_items(request):
     if request.method=='GET':
-        return Response({"message": "Everyone should be able to view this"})
+        queryset = MenuItem.objects.all()
+        data = MenuItemSerializer(queryset, many=True)
+        return Response({'data': data.data})
 
     if request.method=='POST':
         if request.user.groups.filter(name='Manager').exists():
@@ -21,9 +24,12 @@ def menu_items(request):
 
 @api_view(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
 @throttle_classes([AnonRateThrottle, UserRateThrottle])
-def MenuItemsViewSet(request):
+def single_item(request, pk):
     if request.method=='GET':
-        return Response({"message": "Menu Item here"})
+        queryset = MenuItem.objects.filter(id=pk)
+        data = MenuItemSerializer(queryset, many=True)
+        return Response({'data': data.data})
+
     if request.method=='PUT':
         if request.user.groups.filter(name='Manager').exists():
             return Response({"message": "Only Manager Should Put"}, 200)

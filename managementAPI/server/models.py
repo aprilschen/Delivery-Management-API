@@ -6,35 +6,58 @@ class Category(models.Model):
     slug=models.SlugField()
     title = models.CharField(max_length=255, db_index=True)
 
+    def __str__(self):
+        return self.slug
+
 class MenuItem(models.Model):
     title = models.CharField(max_length=255, db_index=True)
     price = models.DecimalField(max_digits=6, decimal_places=2, db_index=True)
     featured = models.BooleanField(db_index=True)
     category = models.ForeignKey(Category, on_delete=models.PROTECT)
 
+    def __str__(self):
+        return self.title
+
 class Cart(models.Model):
     user = models.ForeignKey(User, on_delete = models.CASCADE)
-    MenuItem = models.ForeignKey(MenuItem, on_delete=models.CASCADE)
+    menuitem = models.ForeignKey(MenuItem, on_delete=models.CASCADE)
     quantity = models.SmallIntegerField()
     unit_price = models.DecimalField(max_digits=6, decimal_places=2)
     price = models.DecimalField(max_digits=6, decimal_places=2)
 
+    def __str__(self):
+        return self.user
+
     class Meta:
-        uniqueTogether = ('menuitem', 'user')
+        unique_together = ['menuitem', 'user',]
 
 class Order(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    delivery_crew = models.ForeignKey(on_delete=models.SET_NULL, related_name="delivery_crew", null=True)
+    delivery_crew = models.ForeignKey('DeliveryCrew', on_delete=models.SET_NULL, related_name="delivery_crew", null=True)
     status = models.BooleanField(db_index=True, default=0)
     total = models.DecimalField(max_digits=6, decimal_places=2)
     date = models.DateField(db_index=True)
 
-class OrderItem(models.model):
+    def __str__(self):
+        return self.user
+
+class OrderItem(models.Model):
     order = models.ForeignKey(User, on_delete=models.CASCADE)
     menuitem = models.ForeignKey(MenuItem, on_delete=models.CASCADE)
     quantity = models.SmallIntegerField()
     unit_price = models.DecimalField(max_digits=6, decimal_places=2)
     price = models.DecimalField(max_digits=6, decimal_places=2)
 
+    def __str__(self):
+        return self.menuitem
+
     class Meta:
-        unique_together = ('order', 'menuitem')
+        unique_together = ['order', 'menuitem',]
+
+class DeliveryCrew(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    wage = models.IntegerField()
+    hours_unpaid = models.IntegerField()
+
+    def __str__(self):
+        return self.user

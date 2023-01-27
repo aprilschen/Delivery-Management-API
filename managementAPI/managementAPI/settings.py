@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 	'djoser',
     'rest_framework.authtoken',
+    'server',
     # admin authentication: 7667b914ef8237aef20d4b2cefea653da61b08d6
 ]
 
@@ -134,6 +135,7 @@ REST_FRAMEWORK = {
 	'DEFAULT_RENDERER_CLASSES': [
 		'rest_framework.renderers.JSONRenderer',
 		'rest_framework.renderers.BrowsableAPIRenderer',
+        'rest_framework_xml.renderers.XMLRenderer',
 	],
     'DEFAULT_AUTHENTICATION_CLASSES': (
 	    'rest_framework.authentication.TokenAuthentication',
