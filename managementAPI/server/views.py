@@ -4,8 +4,11 @@ from rest_framework.decorators import api_view, permission_classes, throttle_cla
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
-from .serializers import MenuItemSerializer
+from .serializers import MenuItemSerializer, UserSerializer
 from .models import MenuItem
+from django.contrib.auth.models import User
+from django.contrib.auth.models import Group
+
 # Create your views here.
 @api_view(['GET', 'POST'])
 @throttle_classes([AnonRateThrottle, UserRateThrottle])
@@ -15,9 +18,13 @@ def menu_items(request):
         data = MenuItemSerializer(queryset, many=True)
         return Response({'data': data.data})
 
+
     if request.method=='POST':
         if request.user.groups.filter(name='Manager').exists():
-            return Response({"message": "Only Manager Should See This"}, 201)
+            serialized_item = MenuItemSerializer(data = request.data)
+            serialized_item.is_valid(raise_exception=True)
+            serialized_item.save()
+            return Response({"message": "Item Created"}, 201)
         else:
             return Response({"message": "You are not authorized"}, 403)
 
@@ -30,19 +37,49 @@ def single_item(request, pk):
         data = MenuItemSerializer(queryset, many=True)
         return Response({'data': data.data})
 
-    if request.method=='PUT':
+
+    if request.method=='PUT': # Put uses Encoded Form to Update
         if request.user.groups.filter(name='Manager').exists():
-            return Response({"message": "Only Manager Should Put"}, 200)
+            queryset = MenuItem.objects.filter(id=pk)
+            serialized_item = MenuItemSerializer(data = request.data)
+            serialized_item.is_valid(raise_exception=True)
+
+            queryset.update(title=serialized_item.data['title'])
+            queryset.update(price=serialized_item.data['price'])
+            queryset.update(category=serialized_item.data['category'])
+
+            return Response({"data": "Successfully Updated"}, 200)
         else:
             return Response({"message": "You are not authorized"}, 403)
-    if request.method=='PATCH':
+
+
+    if request.method=='PATCH': # Patch uses Query Params to Update
         if request.user.groups.filter(name='Manager').exists():
-            return Response({"message": "Only Manager Should Patch"}, 200)
+            queryset = MenuItem.objects.filter(id=pk)
+            t = request.GET.get('title')
+            p = request.GET.get('price')
+            c = request.GET.get('category')
+            if t:
+                queryset.update(title=t)
+            if p:
+                queryset.update(price=p)
+            if c:
+                queryset.update(category=c)
+
+            data = MenuItemSerializer(queryset, many=True)
+            return Response({'PUT data': data.data})
         else:
             return Response({"message": "You are not authorized"}, 403)
+
+
     if request.method=='DELETE':
         if request.user.groups.filter(name='Manager').exists():
-            return Response({"message": "Only Manager Should Delete"}, 200)
+            item = MenuItem.objects.get(id=pk)
+            if item:
+                item.delete()
+                return Response({"message": "Successfully deleted"}, 200)
+            else:
+                return Response({"message": "Item does not exist"})
         else:
             return Response({"message": "You are not authorized"}, 403)
 
@@ -53,22 +90,35 @@ def single_item(request, pk):
 def Managers(request):
     if request.user.groups.filter(name='Manager').exists():
         if request.method=='GET':
-            return Response({"message": "Get method in Manager"}, 200)
+            queryset = User.objects.filter(groups__name='Manager')
+            serialized_item = UserSerializer(queryset, many=True)
+            return Response({"data": serialized_item.data}, 200)
 
         if request.method=='POST':
-            return Response({"message": "Post method in Manager"}, 201)
+            serialized_item = UserSerializer(data = request.data)
+            serialized_item.is_valid(raise_exception=True)
+            serialized_item.save()
+            return Response({"message": "User account created"}, 201)
 
     else:
         return Response({"message": "You are not authorized"}, 403)
 
+
 @api_view(['DELETE'])
 @throttle_classes([AnonRateThrottle, UserRateThrottle])
 @permission_classes([IsAuthenticated])
-def ManagerView(request):
+def ManagerView(request, mail):
     if request.user.groups.filter(name='Manager').exists():
         if request.method=='DELETE':
-            # add logic to find. If found, return 200. If not found, return 404
-            return Response({"message": "Successfully Deleted"}, 200)
+            item = User.objects.get(email=mail)
+            if item:
+                if item.groups.filter(name="Manager").exists():
+                    return Response({"message": "Managers cannot delete Managers"}, 400)
+                else:
+                    item.delete()
+                    return Response({"message": "User successfully removed"}, 200)
+            else:
+                return Response({"message": "User does not exist"}, 404)
 
     else:
         return Response({"message": "You are not authorized"}, 403)
@@ -81,25 +131,43 @@ def ManagerView(request):
 def DeliveryCrew(request):
     if request.user.groups.filter(name='Manager').exists():
         if request.method=='GET':
-            return Response({"message": "Returns all delivery crew"}, 200)
+            queryset = User.objects.filter(groups__name='Delivery Crew')
+            serialized_item = UserSerializer(queryset, many=True)
+            return Response({"data": serialized_item.data}, 200)
 
         if request.method=='POST':
-            return Response({"message": "Assigns a user to the delivery crew group"}, 201)
+            serialized_item = UserSerializer(data = request.data)
+            serialized_item.is_valid(raise_exception=True)
+            serialized_item.save()
+            delivery_group = Group.objects.get(name='Delivery Crew')
+            user = User.objects.filter(email=serialized_item.data['email'])
+            id = user[0]
+            delivery_group.user_set.add(id)
+            return Response({"message": "Successfully created Delivery Crew User"}, 201)
 
     else:
         return Response({"message": "You are not authorized"}, 403)
+
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 @throttle_classes([UserRateThrottle])
-def DeliveryCrewView(request):
+def DeliveryCrewView(request, pk):
     if request.user.groups.filter(name='Manager').exists():
         if request.method=='DELETE':
-            # add logic to find. If found, return 200. If not found, return 404
-            return Response({"message": "Successfully Deleted Crew"}, 200)
+            item = User.objects.get(id=pk)
+            if item:
+                if item.groups.filter(name="Delivery Crew").exists():
+                    item.delete()
+                    return Response({"message": "Successfully Deleted Crew"}, 200)
+                else:
+                    return Response({"message": "User is not Delivery Crew"}, 400)
+            else:
+                return Response({"message": "User not found"}, 404)
 
     else:
         return Response({"message": "You are not authorized"}, 403)
+
 
 @api_view(['GET', 'POST', 'DELETE'])
 @permission_classes([IsAuthenticated])
@@ -113,6 +181,7 @@ def Cart(request):
 
     if request.method=='DELETE':
         return Response({"message": "Deletes all menu items"}, 200)
+
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
