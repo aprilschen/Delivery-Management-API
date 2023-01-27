@@ -8,6 +8,7 @@ from .serializers import MenuItemSerializer, UserSerializer
 from .models import MenuItem
 from django.contrib.auth.models import User
 from django.contrib.auth.models import Group
+from django.core.paginator import Paginator, EmptyPage
 
 # Create your views here.
 @api_view(['GET', 'POST'])
@@ -15,6 +16,18 @@ from django.contrib.auth.models import Group
 def menu_items(request):
     if request.method=='GET':
         queryset = MenuItem.objects.all()
+        perpage = request.query_params.get('perpage', default=2)
+        page = request.query_params.get('page', default=1)
+
+        search = request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(title__icontains=search)
+        paginator = Paginator(queryset, per_page = perpage)
+
+        try:
+            queryset = paginator.page(number=page)
+        except EmptyPage:
+            queryset = []
         data = MenuItemSerializer(queryset, many=True)
         return Response({'data': data.data})
 
@@ -198,7 +211,6 @@ def Orders(request):
 
     if request.method=='POST':
         return Response({"message": "Creates a new order item for the user"}, 201)
-
 
 
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
