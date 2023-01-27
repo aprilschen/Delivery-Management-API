@@ -22,6 +22,11 @@ def menu_items(request):
         search = request.query_params.get('search')
         if search:
             queryset = queryset.filter(title__icontains=search)
+
+        ordering = request.query_params.get('ordering')
+        if ordering:
+            queryset = queryset.order_by(ordering)
+
         paginator = Paginator(queryset, per_page = perpage)
 
         try:
