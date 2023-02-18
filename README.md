@@ -1,4 +1,4 @@
-# Restaurant-Management-API
+# Delivery Management API
 RESTful API made with Django and DRF
 
 ### Tech Stack
